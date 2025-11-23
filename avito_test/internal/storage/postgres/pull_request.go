@@ -198,7 +198,12 @@ func (s *Storage) Reassign(ctx context.Context, prID, revID string) (*models.PRE
 		return nil, err
 	}
 
-	err = s.updateReviewer(ctx, tx, user, prID, revID)
+	err = s.deleteOld(ctx, tx, prID, revID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.insertNewReviewer(ctx, tx, user, prID)
 	if err != nil {
 		return nil, err
 	}
@@ -229,9 +234,19 @@ func (s *Storage) Reassign(ctx context.Context, prID, revID string) (*models.PRE
 	}, nil
 }
 
-func (s *Storage) updateReviewer(ctx context.Context, tx pgx.Tx, user *models.User, prID string, revID string) error {
-	query := fmt.Sprintf("UPDATE %s SET user_id = $1 WHERE pull_request_id = $2 AND user_id = $3", ReviewersTable)
-	_, err := tx.Exec(ctx, query, user.UserID, prID, revID)
+func (s *Storage) deleteOld(ctx context.Context, tx pgx.Tx, prID string, revID string) error {
+	query := fmt.Sprintf("DELETE FROM %s WHERE pull_request_id = $1 AND user_id = $2", ReviewersTable)
+	_, err := tx.Exec(ctx, query, prID, revID)
+	if err != nil {
+		s.log.Debug(FailedToDeleteValues, slog.Any("error", err))
+		return err
+	}
+	return nil
+}
+
+func (s *Storage) insertNewReviewer(ctx context.Context, tx pgx.Tx, user *models.User, prID string) error {
+	query := fmt.Sprintf("INSERT INTO %s (pull_request_id, user_id)	VALUES ($1, $2) ON CONFLICT (pull_request_id, user_id) DO NOTHING", ReviewersTable)
+	_, err := tx.Exec(ctx, query, user.UserID, prID)
 	if err != nil {
 		s.log.Debug(FailedToUpdateValues, slog.Any("error", err))
 		return err
