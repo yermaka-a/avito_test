@@ -29,7 +29,7 @@ func New(cfg config.Config, logger *slog.Logger, storage *postgres.Storage) *App
 	}
 }
 
-func (a *App) Run() error {
+func (a *App) MustRun() error {
 	a.logger.Info(fmt.Sprintf("starting server on port %s", a.cfg.Port()))
 	return a.server.Run(fmt.Sprintf(":%s", a.cfg.Port()))
 }
