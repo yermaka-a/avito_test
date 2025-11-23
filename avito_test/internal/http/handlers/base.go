@@ -11,6 +11,8 @@ const (
 )
 
 var (
+	BadRequestMsg        = "bad request"
+	IncorrectData        = "incorrect data"
 	FailedToMarhsalJSON        = "failed to marshal json"
 	PRExistsCode               = "PR_EXISTS"
 	NotFoundCode               = "NOT_FOUND"

@@ -13,17 +13,15 @@ import (
 func (h *Handler) SetIsActive(w http.ResponseWriter, r *http.Request) {
 	var uSt UserStateRequest
 	if err := json.NewDecoder(r.Body).Decode(&uSt); err != nil {
-		h.log.Debug("bad request", slog.Any("error", err))
-		w.WriteHeader(http.StatusBadRequest)
-		h.ErrResponse(w, ErrResourceNotFound, NotFoundCode)
+		h.log.Debug(BadRequestMsg, slog.Any("error", err))
+		h.ErrResponse(w, ErrResourceNotFound, NotFoundCode, http.StatusBadRequest)
 		return
 	}
 
 	user, err := h.service.SetIsActive(context.Background(), uSt.UserId, uSt.IsActive)
 	if err != nil {
 		if errors.Is(err, storage.ErrUserNotFound) {
-			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte("Пользователь не найден"))
+			h.ErrResponse(w, ErrResourceNotFound, NotFoundCode, http.StatusNotFound)
 			return
 		}
 		w.WriteHeader(http.StatusInternalServerError)
@@ -32,7 +30,7 @@ func (h *Handler) SetIsActive(w http.ResponseWriter, r *http.Request) {
 
 	b, err := json.Marshal(user)
 	if err != nil {
-		h.log.Warn("failed to marshal json", slog.Any("error", err))
+		h.log.Warn(FailedToMarhsalJSON, slog.Any("error", err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -46,7 +44,7 @@ func (h *Handler) GetReview(w http.ResponseWriter, r *http.Request) {
 	userId := params.Get("user_id")
 	if userId == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("некорректные данные"))
+		w.Write([]byte(IncorrectData))
 		return
 	}
 	pr, err := h.service.GetReview(context.Background(), userId)
@@ -60,7 +58,7 @@ func (h *Handler) GetReview(w http.ResponseWriter, r *http.Request) {
 	b, err := json.Marshal(prsDTO)
 
 	if err != nil {
-		h.log.Warn("failed to marshal json", slog.Any("error", err))
+		h.log.Warn(FailedToMarhsalJSON, slog.Any("error", err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

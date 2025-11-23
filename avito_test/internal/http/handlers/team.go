@@ -13,9 +13,9 @@ import (
 func (h *Handler) CreateTeam(w http.ResponseWriter, r *http.Request) {
 	var team models.Team
 	if err := json.NewDecoder(r.Body).Decode(&team); err != nil {
-		h.log.Debug("bad request", slog.Any("error", err))
+		h.log.Debug(BadRequestMsg, slog.Any("error", err))
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Некорректное тело запроса"))
+		w.Write([]byte(IncorrectData))
 		return
 	}
 
@@ -23,15 +23,14 @@ func (h *Handler) CreateTeam(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 
 		if errors.Is(err, storage.ErrTeamAlreadyExists) {
-			w.WriteHeader(http.StatusBadRequest)
-			h.ErrResponse(w, storage.ErrTeamAlreadyExists, TeamExistsCode)
+			h.ErrResponse(w, storage.ErrTeamAlreadyExists, TeamExistsCode, http.StatusBadRequest)
 			return
 		}
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte("Команда создана"))
+	b, err := json.Marshal(team)
+	h.writeResponse(w, b, http.StatusCreated, err)
 }
 
 func (h *Handler) GetTeamWithMembers(w http.ResponseWriter, r *http.Request) {
@@ -40,14 +39,13 @@ func (h *Handler) GetTeamWithMembers(w http.ResponseWriter, r *http.Request) {
 
 	if teamName == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Некорректное имя команды"))
+		w.Write([]byte(IncorrectData))
 		return
 	}
 	team, err := h.service.GetTeamWithMembers(context.Background(), teamName)
 	if err != nil {
 		if errors.Is(err, storage.ErrTeamNotFound) {
-			w.WriteHeader(http.StatusNotFound)
-			h.ErrResponse(w, ErrResourceNotFound, NotFoundCode)
+			h.ErrResponse(w, ErrResourceNotFound, NotFoundCode, http.StatusNotFound)
 			return
 		}
 		w.WriteHeader(http.StatusInternalServerError)
@@ -55,7 +53,7 @@ func (h *Handler) GetTeamWithMembers(w http.ResponseWriter, r *http.Request) {
 	}
 	b, err := json.Marshal(team)
 	if err != nil {
-		h.log.Warn("failed to marshal json", slog.Any("error", err))
+		h.log.Warn(FailedToMarhsalJSON, slog.Any("error", err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

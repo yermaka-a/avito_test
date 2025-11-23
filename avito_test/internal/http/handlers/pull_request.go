@@ -10,35 +10,34 @@ import (
 	"net/http"
 )
 
-func (h *Handler) writeResponse(w http.ResponseWriter, b []byte, err error) {
+func (h *Handler) writeResponse(w http.ResponseWriter, b []byte, status int, err error) {
 	if err != nil {
 		h.log.Warn(FailedToMarhsalJSON, slog.Any("error", err))
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	w.WriteHeader(status)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(b)
 }
 func (h *Handler) CreatePR(w http.ResponseWriter, r *http.Request) {
 	var prDTO PRRequest
 	if err := json.NewDecoder(r.Body).Decode(&prDTO); err != nil {
-		h.log.Debug("bad request", slog.Any("error", err))
+		h.log.Debug(BadRequestMsg, slog.Any("error", err))
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Некорректное тело запроса"))
+		w.Write([]byte(IncorrectData))
 		return
 	}
 	pr := models.NewPullRequest(prDTO.ID, prDTO.Name, prDTO.AuthorId)
 	err := h.service.CreatePR(context.Background(), pr)
 	if err != nil {
 		if errors.Is(err, storage.ErrPRIDAlreadyExists) {
-			w.WriteHeader(http.StatusConflict)
-			h.ErrResponse(w, storage.ErrPRIDAlreadyExists, PRExistsCode)
+			h.ErrResponse(w, storage.ErrPRIDAlreadyExists, PRExistsCode, http.StatusConflict)
 			return
 		}
 
 		if errors.Is(err, storage.ErrUserNotFound) {
-			w.WriteHeader(http.StatusNotFound)
-			h.ErrResponse(w, storage.ErrUserNotFound, NotFoundCode)
+			h.ErrResponse(w, storage.ErrUserNotFound, NotFoundCode, http.StatusNotFound)
 			return
 		}
 
@@ -46,25 +45,23 @@ func (h *Handler) CreatePR(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	b, err := json.Marshal(pr)
-	w.WriteHeader(http.StatusCreated)
-	h.writeResponse(w, b, err)
+	h.writeResponse(w, b, http.StatusCreated, err)
 
 }
 
 func (h *Handler) PRMarkAsMerged(w http.ResponseWriter, r *http.Request) {
 	var merge merge
 	if err := json.NewDecoder(r.Body).Decode(&merge); err != nil {
-		h.log.Debug("bad request", slog.Any("error", err))
+		h.log.Debug(BadRequestMsg, slog.Any("error", err))
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Некорректное тело запроса"))
+		w.Write([]byte(IncorrectData))
 		return
 	}
 	pr, err := h.service.PRMarkAsMerged(context.Background(), merge.PrID)
 	if err != nil {
 		if errors.Is(err, storage.ErrPRNotFound) {
 
-			w.WriteHeader(http.StatusNotFound)
-			h.ErrResponse(w, ErrResourceNotFound, NotFoundCode)
+			h.ErrResponse(w, ErrResourceNotFound, NotFoundCode, http.StatusNotFound)
 			return
 		}
 		w.WriteHeader(http.StatusInternalServerError)
@@ -72,43 +69,38 @@ func (h *Handler) PRMarkAsMerged(w http.ResponseWriter, r *http.Request) {
 	}
 
 	b, err := json.Marshal(pr)
-	w.WriteHeader(http.StatusOK)
-	h.writeResponse(w, b, err)
+	h.writeResponse(w, b, http.StatusOK, err)
 
 }
 
 func (h *Handler) Reassign(w http.ResponseWriter, r *http.Request) {
 	var rRevws ReassignReviewers
 	if err := json.NewDecoder(r.Body).Decode(&rRevws); err != nil {
-		h.log.Debug("bad request", slog.Any("error", err))
+		h.log.Debug(BadRequestMsg, slog.Any("error", err))
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Некорректное тело запроса"))
+		w.Write([]byte(IncorrectData))
 		return
 	}
 
 	prEx, err := h.service.Reassign(context.Background(), rRevws.PrID, rRevws.OldID)
 	if err != nil {
 		if errors.Is(err, storage.ErrPRNotFound) || errors.Is(err, storage.ErrUserNotFound) {
-			w.WriteHeader(http.StatusNotFound)
-			h.ErrResponse(w, ErrResourceNotFound, NotFoundCode)
+			h.ErrResponse(w, ErrResourceNotFound, NotFoundCode, http.StatusNotFound)
 			return
 		}
 
 		if errors.Is(err, storage.ErrPRAlreadyMerged) {
-			w.WriteHeader(http.StatusConflict)
-			h.ErrResponse(w, ErrCantReassignMergedPR, PRMergedCode)
+			h.ErrResponse(w, ErrCantReassignMergedPR, PRMergedCode, http.StatusConflict)
 			return
 		}
 
 		if errors.Is(err, storage.ErrNoAvailableUsers) {
-			w.WriteHeader(http.StatusConflict)
-			h.ErrResponse(w, ErrNoActiveCandidates, NoCandidateCode)
+			h.ErrResponse(w, ErrNoActiveCandidates, NoCandidateCode, http.StatusConflict)
 			return
 		}
 
 		if errors.Is(err, storage.ErrReviewerNotAssigned) {
-			w.WriteHeader(http.StatusConflict)
-			h.ErrResponse(w, ErrReviewerNotAssignedToPR, NoAssignedCode)
+			h.ErrResponse(w, ErrReviewerNotAssignedToPR, NoAssignedCode, http.StatusConflict)
 			return
 		}
 		w.WriteHeader(http.StatusInternalServerError)
@@ -126,8 +118,8 @@ func (h *Handler) Reassign(w http.ResponseWriter, r *http.Request) {
 	w.Write(b)
 }
 
-func (h *Handler) ErrResponse(w http.ResponseWriter, err error, code string) {
+func (h *Handler) ErrResponse(w http.ResponseWriter, err error, code string, status int) {
 	resp := NewErrResponse(err, code)
 	b, err := json.Marshal(resp)
-	h.writeResponse(w, b, err)
+	h.writeResponse(w, b, status, err)
 }
