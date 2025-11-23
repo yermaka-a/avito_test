@@ -2,7 +2,7 @@
 
 
 run:
-	cd ./avito_test && go run ./cmd/avito_test/main.go
+	cd ./avito_test && godotenv -f ../.env go run ./cmd/avito_test/main.go
 
 up:
 	docker-compose up -d
