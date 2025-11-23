@@ -6,16 +6,6 @@ import (
 	"os"
 )
 
-// const (
-// 	ENV_PATH = "../.env"
-// )
-
-// func init() {
-// 	if err := godotenv.Load(ENV_PATH); err != nil {
-// 		panic(".env file is not found")
-// 	}
-// }
-
 type DBConfig struct {
 	PORT   string
 	USER   string
