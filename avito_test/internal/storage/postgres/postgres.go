@@ -14,6 +14,7 @@ const (
 	FailedToCommitTransac = "failed to commit transaction"
 	FailedToStartQuery    = "failed to start query"
 	FailedToUpdateValues  = "failed to update values"
+	FailedToDeleteValues = "failed to delete values"
 )
 
 const (
