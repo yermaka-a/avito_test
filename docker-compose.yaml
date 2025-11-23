@@ -1,14 +1,72 @@
 services:
-  db:
-    image: postgres:17
-    environment:
-      POSTGRES_DB: db
-      POSTGRES_USER: test
-      POSTGRES_PASSWORD: test
+  app:
+    build:
+      context: ./avito_test
     ports:
-      - "5432:5432"
+      - ${SERVE_PORT}:${SERVE_PORT}
+    restart: always
+    environment:
+      POSTGRES_DB_NAME: ${POSTGRES_DB_NAME}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASS: ${POSTGRES_PASS}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      SERVE_PORT: ${SERVE_PORT}
+    depends_on:
+      db:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    networks:
+      - baseNetwork
+  db:
+    image: postgres:17-alpine
+    restart: always
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB_NAME}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASS}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-
+      - ./postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB_NAME}"]
+      interval: 3s
+      timeout: 3s
+      retries: 3
+    networks:
+      - baseNetwork
+  migrations:
+    image: kukymbr/goose-docker:3.24.2
+    environment:
+      - GOOSE_DRIVER=postgres
+      - GOOSE_DBSTRING=host=${POSTGRES_HOST} port=${POSTGRES_PORT} user=${POSTGRES_USER} password=${POSTGRES_PASS} dbname=${POSTGRES_DB_NAME}
+      - GOOSE_COMMAND=${GOOSE_COMMAND}
+      - GOOSE_COMMAND_ARG=${GOOSE_COMMAND_ARG}
+    volumes:
+      - ./migrations:/migrations
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - baseNetwork
+  adminer:
+    image: adminer:latest
+    container_name: adminer
+    restart: always
+    ports:
+      - "8080:8080"
+    networks:
+      - baseNetwork
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+    depends_on:
+      - db
 volumes:
   postgres_data:
+
+networks:
+  baseNetwork:
+    driver: bridge
