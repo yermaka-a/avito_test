@@ -42,7 +42,7 @@ services:
     image: kukymbr/goose-docker:3.24.2
     environment:
       - GOOSE_DRIVER=postgres
-      - GOOSE_DBSTRING=host=${POSTGRES_HOST} port=${POSTGRES_PORT} user=${POSTGRES_USER} password=${POSTGRES_PASS} dbname=${POSTGRES_DB_NAME}
+      - GOOSE_DBSTRING=host=${POSTGRES_GOOSE_HOST} port=${POSTGRES_PORT} user=${POSTGRES_USER} password=${POSTGRES_PASS} dbname=${POSTGRES_DB_NAME}
       - GOOSE_COMMAND=${GOOSE_COMMAND}
       - GOOSE_COMMAND_ARG=${GOOSE_COMMAND_ARG}
     volumes:
