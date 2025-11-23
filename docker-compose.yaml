@@ -52,18 +52,6 @@ services:
         condition: service_healthy
     networks:
       - baseNetwork
-  adminer:
-    image: adminer:latest
-    container_name: adminer
-    restart: always
-    ports:
-      - "8080:8080"
-    networks:
-      - baseNetwork
-    environment:
-      ADMINER_DEFAULT_SERVER: db
-    depends_on:
-      - db
 volumes:
   postgres_data:
 

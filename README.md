@@ -20,4 +20,4 @@
 
 ### app ч/з Makefile
 * Проект стартует ч/з docker, но можно и ч/з Make `make run` (использует `godotenv`), так же нужно учесть значение `POSTGRES_HOST` в `.env` по умолчанию = `db` как в docker-compose, для запуска напрямую нужно выставить localhost
-* 
+
